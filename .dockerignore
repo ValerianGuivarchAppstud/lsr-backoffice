@@ -1,0 +1,8 @@
+.git
+.idea
+node_modules
+build
+Dockerfile
+docker-compose.yml
+nginx.conf
+deploy.sh

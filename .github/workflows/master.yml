@@ -1,0 +1,44 @@
+name: production deploy workflow
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: login to registry
+        run: echo ${{ secrets.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secrets.DOCKER_HUB_USER }} --password-stdin ${{ secrets.DOCKER_HUB_REGISTRY }}
+      - name: build docker image
+        run: docker build --no-cache --build-arg REACT_APP_API_URL=https://api.swag.com/api/v1/admin --build-arg PUBLIC_URL=https://admin.swag.com -t swag-backoffice .
+      - name: tag image
+        run: docker tag swag-backoffice ${{ secrets.DOCKER_HUB_REGISTRY }}/swag-backoffice:production
+      - name: push image
+        run: docker push ${{ secrets.DOCKER_HUB_REGISTRY }}/swag-backoffice:production
+      - name: tag image with build number
+        run: docker tag swag-backoffice ${{ secrets.DOCKER_HUB_REGISTRY }}/swag-backoffice:production-ci-${GITHUB_RUN_NUMBER}
+      - name: push image with build number
+        run: docker push ${{ secrets.DOCKER_HUB_REGISTRY }}/swag-backoffice:production-ci-${GITHUB_RUN_NUMBER}
+  build-heroku:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      # https://github.com/marketplace/actions/deploy-to-heroku#deploy-with-docker
+      - uses: akhileshns/heroku-deploy@v3.4.6
+        with:
+          heroku_api_key: ${{secrets.HEROKU_API_KEY}}
+          heroku_app_name: swag-backoffice
+          heroku_email: developers@appstud.com
+          usedocker: true
+          docker_build_args: |
+            REACT_APP_API_URL
+            PUBLIC_URL
+        env:
+          REACT_APP_API_URL: https://appstud-swag-backend-node.herokuapp.com/api/v1/admin
+          PUBLIC_URL: https://swag-backoffice.herokuapp.com
